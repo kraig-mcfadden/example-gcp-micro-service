@@ -1,0 +1,101 @@
+name: Main Branch Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+jobs:
+  # Some example CI checks you might run (using Rust in this example,
+  #   but you can write checks for your own language)
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Test
+        run: cargo test
+
+  fmt_check:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+  lint_check:
+    name: Check lints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Check lints
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  deploy_infrastructure_staging:
+    name: Deploy Infrastructure Staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Don't actually run because this is just an example, but if you uncomment this it should apply
+      # - name: Terraform apply
+      #   run: |
+      #     cd infra
+      #     terraform init
+      #     terraform apply --auto-approve -var "environment=staging" -var "account_id=123455678"
+
+  build_and_deploy_code_staging:
+    name: Build and Deploy Code Staging
+    runs-on: ubuntu-latest
+    needs: [test, fmt_check, lint_check, deploy_infrastructure_staging]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # build and deploy steps here
+
+  e2e_tests:
+    name: End to End Tests
+    runs-on: self-hosted  # most likely would run on self-hosted to get access to your staging env
+    needs: [build_and_deploy_code_staging]
+    steps:
+        - name: Checkout
+          uses: actions/checkout@v3
+
+        # testing steps here - hit your staging application you just deployed
+
+  deploy_infrastructure_prod:
+    name: Deploy Infrastructure Prod
+    runs-on: ubuntu-latest
+    needs: [e2e_tests]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Don't actually run because this is just an example, but if you uncomment this it should apply
+      # - name: Terraform apply
+      #   run: |
+      #     cd infra
+      #     terraform init
+      #     terraform apply --auto-approve -var "environment=prod" -var "account_id=34567890"
+
+  build_and_deploy_code_prod:
+    name: Build and Deploy Code Prod
+    runs-on: ubuntu-latest
+    needs: [deploy_infrastructure_prod]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # build and deploy steps here
